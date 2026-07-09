@@ -2,12 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-body{
-    margin:0;
-    font-family:Inter,system-ui,sans-serif;
-    background:#f4f6fb;
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: #f4f6fb;
 }
 
-*{
-    box-sizing:border-box;
+* {
+  box-sizing: border-box;
 }

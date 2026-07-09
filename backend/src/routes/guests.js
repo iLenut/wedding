@@ -55,14 +55,31 @@ router.post("/", async (req, res) => {
     UPDATE
 */
 router.put("/:id", async (req, res) => {
-  const guest = await prisma.guest.update({
-    where: {
-      id: Number(req.params.id),
-    },
-    data: req.body,
-  });
+  try {
+    const id = Number(req.params.id);
 
-  res.json(guest);
+    const guest = await prisma.guest.update({
+      where: { id },
+      data: {
+        name: req.body.name,
+        groupName: req.body.groupName,
+        confirmed: req.body.confirmed,
+        advancePaid: req.body.advancePaid,
+        menuType: req.body.menuType,
+        notes: req.body.notes,
+        attending: req.body.attending,
+        tableId: req.body.tableId,
+      },
+    });
+
+    res.json(guest);
+  } catch (error) {
+    console.error("Guest update failed:", error);
+    res.status(500).json({
+      error: "Guest update failed",
+      details: error.message,
+    });
+  }
 });
 
 /*

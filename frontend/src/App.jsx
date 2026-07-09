@@ -1,35 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
-import { DndContext } from "@dnd-kit/core";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 
 import api from "./api/api";
 import Layout from "./components/Layout";
 import Sidebar from "./components/Sidebar";
 import TablesCanvas from "./components/TablesCanvas";
+import TablesListPage from "./components/TablesListPage";
 
 export default function App() {
   const [guests, setGuests] = useState([]);
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [view, setView] = useState("plan");
+  const [editingGuest, setEditingGuest] = useState(null);
 
   async function loadData() {
-    try {
-      setLoading(true);
-      setError("");
+    setLoading(true);
 
-      const [guestsResponse, tablesResponse] = await Promise.all([
-        api.get("/api/guests"),
-        api.get("/api/tables"),
-      ]);
+    const [guestsResponse, tablesResponse] = await Promise.all([
+      api.get("/api/guests"),
+      api.get("/api/tables"),
+    ]);
 
-      setGuests(guestsResponse.data);
-      setTables(tablesResponse.data);
-    } catch (err) {
-      console.error(err);
-      setError("Backend-ul nu răspunde sau baza de date nu este inițializată.");
-    } finally {
-      setLoading(false);
-    }
+    setGuests(guestsResponse.data);
+    setTables(tablesResponse.data);
+
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -37,27 +38,104 @@ export default function App() {
   }, []);
 
   const unassignedGuests = useMemo(() => {
-    return guests.filter((guest) => !guest.tableId);
+    return guests.filter(
+      (guest) => guest.attending !== false && !guest.tableId,
+    );
+  }, [guests]);
+
+  const notAttendingGuests = useMemo(() => {
+    return guests.filter((guest) => guest.attending === false);
   }, [guests]);
 
   async function handleDragEnd(event) {
     const { active, over } = event;
     if (!over) return;
 
-    const guestId = Number(active.id.replace("guest-", ""));
+    const guestId = Number(String(active.id).replace("guest-", ""));
     const targetId = over.id;
+
+    const movedGuest =
+      guests.find((guest) => guest.id === guestId) ||
+      tables
+        .flatMap((table) => table.guests || [])
+        .find((guest) => guest.id === guestId);
+
+    if (!movedGuest || movedGuest.attending === false) return;
 
     const nextTableId =
       targetId === "unassigned"
         ? null
         : Number(String(targetId).replace("table-", ""));
 
+    const currentTableId = movedGuest.tableId ?? null;
+
+    if (currentTableId === nextTableId) {
+      return;
+    }
+
     await api.put(`/api/guests/${guestId}`, {
       tableId: nextTableId,
     });
 
-    await loadData();
+    setGuests((current) =>
+      current.map((guest) =>
+        guest.id === guestId ? { ...guest, tableId: nextTableId } : guest,
+      ),
+    );
+
+    setTables((currentTables) =>
+      currentTables.map((table) => {
+        const withoutGuest = (table.guests || []).filter(
+          (guest) => guest.id !== guestId,
+        );
+
+        if (table.id !== nextTableId) {
+          return {
+            ...table,
+            guests: withoutGuest,
+          };
+        }
+
+        return {
+          ...table,
+          guests: [
+            ...withoutGuest,
+            {
+              ...movedGuest,
+              tableId: nextTableId,
+            },
+          ],
+        };
+      }),
+    );
   }
+
+  function handleGuestSaved(updatedGuest) {
+    setGuests((current) =>
+      current.map((guest) =>
+        guest.id === updatedGuest.id ? { ...guest, ...updatedGuest } : guest,
+      ),
+    );
+
+    setTables((currentTables) =>
+      currentTables.map((table) => ({
+        ...table,
+        guests: (table.guests || []).map((guest) =>
+          guest.id === updatedGuest.id ? { ...guest, ...updatedGuest } : guest,
+        ),
+      })),
+    );
+
+    setEditingGuest(null);
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  );
 
   if (loading) {
     return (
@@ -67,50 +145,32 @@ export default function App() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-6">
-        <div className="bg-white rounded-2xl shadow p-6 max-w-xl">
-          <h1 className="text-xl font-bold mb-2">
-            Aplicația nu poate încărca datele
-          </h1>
-
-          <p className="text-slate-600 mb-4">{error}</p>
-
-          <pre className="bg-slate-900 text-white rounded-xl p-4 text-sm overflow-auto">
-            {`Rulează:
-
-docker compose logs backend
-
-apoi:
-
-docker compose exec backend sh
-npx prisma migrate dev --name init
-npm run prisma:seed
-exit`}
-          </pre>
-
-          <button
-            onClick={loadData}
-            className="mt-4 bg-slate-900 text-white rounded-xl px-4 py-2"
-          >
-            Reîncearcă
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <DndContext onDragEnd={handleDragEnd}>
-      <Layout>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <Layout view={view} onViewChange={setView}>
         <Sidebar
           guests={guests}
           unassignedGuests={unassignedGuests}
+          notAttendingGuests={notAttendingGuests}
+          editingGuest={editingGuest}
+          onEditGuest={setEditingGuest}
           onRefresh={loadData}
+          onGuestSaved={handleGuestSaved}
         />
 
-        <TablesCanvas tables={tables} onRefresh={loadData} />
+        {view === "plan" ? (
+          <TablesCanvas
+            tables={tables}
+            onRefresh={loadData}
+            onEditGuest={setEditingGuest}
+          />
+        ) : (
+          <TablesListPage
+            tables={tables}
+            guests={guests}
+            unassignedGuests={unassignedGuests}
+          />
+        )}
       </Layout>
     </DndContext>
   );

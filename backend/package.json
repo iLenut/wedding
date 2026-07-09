@@ -9,7 +9,10 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:seed": "node prisma/seed.js"
+    "prisma:seed": "node prisma/seed.js",
+    "import:guests": "node scripts/import-guests.js",
+    "clear:guests": "node scripts/clear-guests.js",
+    "clear:extra-guests": "node scripts/clear-unwanted-guests.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -18,7 +21,8 @@
     "@prisma/client": "^6.10.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
