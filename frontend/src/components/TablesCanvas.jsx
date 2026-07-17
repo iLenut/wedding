@@ -1,6 +1,7 @@
 import { useState } from "react";
 import api from "../api/api";
 import RoundTable from "./RoundTable";
+import { exportTablesToWord } from "../utils/exportTablesToWord";
 
 export default function TablesCanvas({ tables, onRefresh, onEditGuest }) {
   const [name, setName] = useState("");
@@ -102,6 +103,14 @@ export default function TablesCanvas({ tables, onRefresh, onEditGuest }) {
               <p className="text-2xl font-black">{totalGuests}</p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => exportTablesToWord(tables)}
+            disabled={totalGuests === 0}
+            className="col-span-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 sm:col-span-1"
+          >
+            Descarcă lista Word
+          </button>
         </div>
 
         <form

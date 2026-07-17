@@ -240,6 +240,7 @@ export default function Sidebar({
             <option value="normal">Meniu normal</option>
             <option value="vegetarian">Meniu vegetarian</option>
             <option value="copil">Meniu copil</option>
+            <option value="fara meniu">Fără meniu</option>
           </select>
 
           <textarea
@@ -364,6 +365,7 @@ export default function Sidebar({
               <option value="normal">Normal</option>
               <option value="vegetarian">Vegetarian</option>
               <option value="copil">Copil</option>
+              <option value="fara meniu">Fără meniu</option>
             </select>
           </div>
 
